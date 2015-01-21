@@ -9,7 +9,20 @@ output: html_document
     There should be a synopsis which describes and summarizes your analysis in at most 10 complete sentences.
 
 # Data Processing
-    There should be a section titled Data Processing which describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.
+We load the data through read.csv and use a connection created by 'unz':
+
+```{r cache=TRUE}
+stormdata <- read.csv(bzfile("repdata_data_StormData.csv.bz2", "repdata_data_StormData.csv"))
+```
+
+Let's see what kind of data is inside:
+
+```{r}
+summary(stormdata)
+```
+
+
+There should be a section titled Data Processing which describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.
 
 # Results
     There should be a section titled Results in which your results are presented.
