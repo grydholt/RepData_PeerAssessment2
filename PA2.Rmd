@@ -1,31 +1,177 @@
 ---
-title: "Exploring the NOAA storm database"
+title: "Exploring the NOAA storm database - Tornado's the real killer"
 author: "Jacob Grydholt"
 date: "Wednesday, January 21, 2015"
 output: html_document
 ---
 
 # Synopsis
-    There should be a synopsis which describes and summarizes your analysis in at most 10 complete sentences.
+In this report I aim to describe which type of weather events has the largest impacts in USA. I summarize data from the NOAA storm database and illustrate that tornadoes have the largest impact on human life. Both in terms of health, i.e. number of fatalities and injuries caused and in economic losses. 
 
 # Data Processing
-We load the data through read.csv and use a connection created by 'unz':
+
+```{r}
+library('dplyr')
+library('reshape2')
+library('ggplot2')
+```
+
+We load the data through read.csv and use a connection created by 'bzfile':
 
 ```{r cache=TRUE}
 stormdata <- read.csv(bzfile("repdata_data_StormData.csv.bz2", "repdata_data_StormData.csv"))
 ```
 
-Let's see what kind of data is inside:
+## Fatalities and Injuries
+
+We summarize for fatalitites and injuries using a dplyr expression:
 
 ```{r}
-summary(stormdata)
+fatalitiesPerEventType <- stormdata %>%
+        group_by(EVTYPE) %>%
+        summarize(FATALITIES = sum(FATALITIES)) %>%
+        arrange(desc(FATALITIES))
+injuriesPerEventType <- stormdata %>%
+        group_by(EVTYPE) %>%
+        summarize(INJURIES = sum(INJURIES)) %>%
+        arrange(desc(INJURIES))
 ```
 
+We find the top 10 for fatalitites:
 
-There should be a section titled Data Processing which describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.
+```{r}
+top10Fatalities <- head(fatalitiesPerEventType, n = 10)
+top10Fatalities$EVENT <- factor(top10Fatalities$EVTYPE, levels = top10Fatalities$EVTYPE)
+top10Fatalities$EVTYPE <- NULL
+top10Fatalities
+```
+
+and for injuries:
+
+```{r}
+top10Injuries <- head(injuriesPerEventType, n = 10)
+top10Injuries$EVENT <- factor(top10Injuries$EVTYPE, levels = top10Injuries$EVTYPE)
+top10Injuries$EVTYPE <- NULL
+top10Injuries
+```
+
+## Economic Damages
+
+In order to calculate the economic damages, we use the columns PROPDMG
+and PROPDMGEXP for property damage and CROPDMG and CROPDMGEXP for crop damage. From
+the document "NATIONAL WEATHER SERVICE INSTRUCTION" the values of
+PROPDMGEXP and CROPDMGEXP are explained. In the document it is
+explained that "K" means thousands, "M" millions and "B" billions. In
+this document's analysis no other exponators are considered except those from the instruction document and their lowercase counterpart. If a
+measurement has an exponator other than "K", "k", "M", "m", or "B" it will count
+as zero (0).
+
+```{r}
+stormdata$PROPDMGEXP <- toupper(stormdata$PROPDMGEXP)
+stormdata$CROPDMGEXP <- toupper(stormdata$CROPDMGEXP)
+
+
+dmgExp <- function(x) {
+        if (x == "K") {
+                return(1000);
+        } else if (x == "M") {
+                return(1000*1000);
+        } else if (x == "G") {
+                return(1000*1000*1000);
+        }
+        return(0);
+}
+
+
+damagesByEventType <- stormdata %>%
+        mutate(damage = sapply(PROPDMGEXP, dmgExp) * PROPDMG + sapply(CROPDMGEXP, dmgExp) * CROPDMG) %>%
+        group_by(EVTYPE) %>%
+        summarize(TOTAL_DAMAGES = sum(damage)) %>%
+	arrange(desc(TOTAL_DAMAGES))
+```
+
+We calculate the top 10 for the damage types:
+
+```{r}
+top10DamagesByEventType <- head(damagesByEventType, n = 10)
+top10DamagesByEventType$EVENT <- factor(top10DamagesByEventType$EVTYPE, levels = top10DamagesByEventType$EVTYPE)
+top10DamagesByEventType$EVTYPE <- NULL
+top10DamagesByEventType
+```
 
 # Results
-    There should be a section titled Results in which your results are presented.
+
+## Fatalities and Injuries
+
+We are interested in which events that cause the most damage. At first, we'll look at fatalities and later turn to injuries to determine which events cost the most in human lives and injuries.
+
+### Fatalities
+
+We plot the data for fatalities:
+
+```{r}
+q <- qplot(EVENT, y = FATALITIES, data = top10Fatalities ,geom = "bar", stat = "identity", position = "dodge")
+q + ggtitle("Top 10 events with respect to number of fatalities caused") + theme(axis.text.x = element_text(angle=-90))
+```
+
+We see that tornadoes and excessive heat are the greatest dangers. The top 10 contains the larger part of the fatalities as they account for 
+```{r}
+top10FatalitiesSum <- sum(top10Fatalities$FATALITIES)
+top10FatalitiesSum
+```
+
+whereas the rest combined account for
+
+```{r}
+sum(stormdata$FATALITIES) - top10FatalitiesSum
+```
+
+In order to not overlook events with a lot of injuries and few fatalities, we do same analysis for injuries.
+
+### Injuries
+
+Again we start by plotting the data:
+
+```{r}
+q <- qplot(EVENT, y = INJURIES, data = top10Injuries ,geom = "bar", stat = "identity", position = "dodge")
+q + ggtitle("Top 10 events with respect to number of injuries caused") + theme(axis.text.x = element_text(angle=-90))
+```
+
+We see that tornadoes and excessive heat are still among the greatest dangers along with thunderstrom wind and flooding. The top 10 contains the larger part of the injuries as they account for 
+
+```{r}
+top10InjuriesSum <- sum(top10Injuries$INJURIES)
+top10InjuriesSum
+```
+
+whereas the rest combined account for
+
+```{r}
+sum(stormdata$INJURIES) - top10InjuriesSum
+```
+
+## Damages
+
+We plot the data for the calculated damages per event type:
+
+```{r}
+q <- qplot(EVENT, y = TOTAL_DAMAGES, data = top10DamagesByEventType ,geom = "bar", stat = "identity", position = "dodge")
+q + ylab("Damages caused ($)") + ggtitle("Top 10 events with respect to total financial damages caused") + theme(axis.text.x = element_text(angle=-90))
+```
+
+We see that tornadoes again top the list. Flooding and hail are also repeat visitors to the top of the various lists. Again the top 10 list has the lion's share.
+
+```{r}
+top10DamagesSum <- sum(top10DamagesByEventType$TOTAL_DAMAGES)
+top10DamagesSum
+```
+
+whereas the rest combined account for (in percentage)
+
+```{r}
+totalDamages <- sum(damagesByEventType$TOTAL_DAMAGES)
+((totalDamages - top10DamagesSum)/totalDamages)*100
+```
 
 <!--
 Document Layout
@@ -49,21 +195,6 @@ Document Layout
     You must show all your code for the work in your analysis document. This may make the document a bit verbose, but that is okay. In general, you should ensure that echo = TRUE for every code chunk (this is the default setting in knitr).
 -->
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r}
-summary(cars)
-```
-
-You can also embed plots, for example:
-
-```{r, echo=FALSE}
-plot(cars)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
 <!--
 Introduction

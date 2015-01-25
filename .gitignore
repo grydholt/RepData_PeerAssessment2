@@ -2,3 +2,5 @@
 .Rhistory
 .RData
 PA2_cache
+
+*.Rmd~
