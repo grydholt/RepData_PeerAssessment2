@@ -126,7 +126,7 @@ whereas the rest combined account for
 sum(stormdata$FATALITIES) - top10FatalitiesSum
 ```
 
-In order to not overlook events with a lot of injuries and few fatalities, we do same analysis for injuries.
+In order to not overlook events with a lot of injuries and few fatalities, we do the same analysis for injuries.
 
 ### Injuries
 
